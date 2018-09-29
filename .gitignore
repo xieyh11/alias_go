@@ -1,2 +1,4 @@
 *.pack
 *.out
+.vscode/*
+debug

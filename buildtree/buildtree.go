@@ -179,10 +179,10 @@ func BuildMapTree(rows [][]string, splitWords [][]string) (strMap map[string](ui
 }
 
 func DumpTree(strMap map[string](uint64), iNodeMap map[uint64](*maptree.MapTreeNode), iNodeToWords map[uint64]([]string), wordFreq map[string]float64, file_prefix string) {
-	strMapFile, _ := os.Create(file_prefix + "str_map")
-	treeFile, _ := os.Create(file_prefix + "tree")
-	wordsFile, _ := os.Create(file_prefix + "words")
-	freqFile, _ := os.Create(file_prefix + "freq")
+	strMapFile, _ := os.Create(file_prefix + "str_map.pack")
+	treeFile, _ := os.Create(file_prefix + "tree.pack")
+	wordsFile, _ := os.Create(file_prefix + "words.pack")
+	freqFile, _ := os.Create(file_prefix + "freq.pack")
 
 	defer strMapFile.Close()
 	defer treeFile.Close()
@@ -213,7 +213,7 @@ func LoadTree(file_prefix string) (strMap map[string](uint64), iNodeMap map[uint
 	iNodeToWords = make(map[uint64]([]string))
 	wordFreq = make(map[string]float64)
 
-	strMapFile, _ := os.Open(file_prefix + "str_map")
+	strMapFile, _ := os.Open(file_prefix + "str_map.pack")
 	defer strMapFile.Close()
 
 	strFileBuf := bufio.NewReader(strMapFile)
@@ -239,7 +239,7 @@ func LoadTree(file_prefix string) (strMap map[string](uint64), iNodeMap map[uint
 		}
 	}
 
-	treeFile, _ := os.Open(file_prefix + "tree")
+	treeFile, _ := os.Open(file_prefix + "tree.pack")
 	defer treeFile.Close()
 
 	treeFileBuf := bufio.NewReader(treeFile)
@@ -276,7 +276,7 @@ func LoadTree(file_prefix string) (strMap map[string](uint64), iNodeMap map[uint
 		}
 	}
 
-	wordsFile, _ := os.Open(file_prefix + "words")
+	wordsFile, _ := os.Open(file_prefix + "words.pack")
 	defer wordsFile.Close()
 
 	wordsScanner := bufio.NewScanner(wordsFile)
@@ -291,7 +291,7 @@ func LoadTree(file_prefix string) (strMap map[string](uint64), iNodeMap map[uint
 		}
 	}
 
-	freqFile, _ := os.Open(file_prefix + "freq")
+	freqFile, _ := os.Open(file_prefix + "freq.pack")
 	defer freqFile.Close()
 
 	freqScanner := bufio.NewScanner(freqFile)
