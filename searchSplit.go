@@ -6,7 +6,7 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/yanyiwu/gojieba"
+	"./jieba"
 
 	"./buildtree"
 	"./searchtree"
@@ -27,7 +27,7 @@ func searchSplit() {
 	scanner.Split(bufio.ScanLines)
 
 	//res := make([][]string, 0)
-	jieba := gojieba.NewJieba()
+	jieba := jieba.NewJieba()
 	defer jieba.Free()
 
 	for scanner.Scan() {

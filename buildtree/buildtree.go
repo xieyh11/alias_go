@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/yanyiwu/gojieba"
+	"../jieba"
 
 	"../maptree"
 )
@@ -64,7 +64,7 @@ func CountWordFrequence(csvNames [][]string) (map[string]float64, [][]string) {
 	wordSet := make(map[string]float64)
 	splitWords := make([][]string, 0)
 
-	jieba := gojieba.NewJieba()
+	jieba := jieba.NewJieba()
 	defer jieba.Free()
 
 	for _, row := range csvNames {
@@ -99,7 +99,7 @@ func CountWordFrequence(csvNames [][]string) (map[string]float64, [][]string) {
 func RemoveCommonWords(csvNames [][]string, threshold float64) {
 	wordSet := make(map[string]int)
 
-	jieba := gojieba.NewJieba()
+	jieba := jieba.NewJieba()
 	defer jieba.Free()
 
 	for _, row := range csvNames {
