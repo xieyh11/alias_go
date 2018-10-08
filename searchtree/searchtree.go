@@ -43,7 +43,7 @@ func subSearchSplitStrings(names []string, strMap map[string]uint64, iNodeToWord
 		if v, ok := iNodeToWords[strMap[names[strI]]]; ok {
 			scores[strI] = strsim.SplitCommonScore(name, v, wordFreq)
 		} else {
-			scores[strI] = strsim.MaxCommonScore(names[strI], strings.Join(name, ""), 0, 1, 0)
+			scores[strI] = strsim.RunesMaxCommonScore([]rune(names[strI]), []rune(strings.Join(name, "")), 0, 1, 0)
 		}
 	}
 	count <- 1
