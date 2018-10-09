@@ -9,7 +9,7 @@ import (
 
 func subSearch(names []string, scores []float64, name string, count chan int) {
 	for strI := range names {
-		scores[strI] = strsim.MaxCommonScore(names[strI], name, 0, 1, 0)
+		scores[strI] = strsim.RunesMaxCommonScore([]rune(names[strI]), []rune(name), 0, 1, 0)
 	}
 	count <- 1
 }
