@@ -8,7 +8,8 @@ import (
 	"strconv"
 	"strings"
 
-	"../jieba"
+	// "../jieba"
+	"../hanlp"
 
 	"../maptree"
 )
@@ -60,34 +61,40 @@ func isEnglishPunc(str string) bool {
 	return false
 }
 
+func countWords(words []string, wordSet map[string]float64, splitWords [][]string) [][]string {
+	for i := 0; i < len(words); {
+		if isChinesePunc(words[i]) || isEnglishPunc(words[i]) {
+			words = append(words[:i], words[i+1:]...)
+		} else {
+			i++
+		}
+	}
+	tempWord := make(map[string]bool)
+	for _, word := range words {
+		tempWord[word] = true
+	}
+	for k, _ := range tempWord {
+		if _, ok := wordSet[k]; ok {
+			wordSet[k]++
+		} else {
+			wordSet[k] = 1
+		}
+	}
+	return append(splitWords, words)
+}
+
 func CountWordFrequence(csvNames [][]string) (map[string]float64, [][]string) {
 	wordSet := make(map[string]float64)
 	splitWords := make([][]string, 0)
 
-	jieba := jieba.NewJieba()
-	defer jieba.Free()
+	// jieba := jieba.NewJieba()
+	// defer jieba.Free()
 
 	for _, row := range csvNames {
-		words := jieba.Cut(row[1], true)
-		for i := 0; i < len(words); {
-			if isChinesePunc(words[i]) || isEnglishPunc(words[i]) {
-				words = append(words[:i], words[i+1:]...)
-			} else {
-				i++
-			}
-		}
-		tempWord := make(map[string]bool)
-		for _, word := range words {
-			tempWord[word] = true
-		}
-		for k, _ := range tempWord {
-			if _, ok := wordSet[k]; ok {
-				wordSet[k]++
-			} else {
-				wordSet[k] = 1
-			}
-		}
-		splitWords = append(splitWords, words)
+		words := hanlp.StrSegment(row[0])
+		splitWords = countWords(words, wordSet, splitWords)
+		words = hanlp.StrSegment(row[1])
+		splitWords = countWords(words, wordSet, splitWords)
 	}
 
 	for k, v := range wordSet {
@@ -99,11 +106,11 @@ func CountWordFrequence(csvNames [][]string) (map[string]float64, [][]string) {
 func RemoveCommonWords(csvNames [][]string, threshold float64) {
 	wordSet := make(map[string]int)
 
-	jieba := jieba.NewJieba()
-	defer jieba.Free()
+	// jieba := jieba.NewJieba()
+	// defer jieba.Free()
 
 	for _, row := range csvNames {
-		words := jieba.Cut(row[1], true)
+		words := hanlp.StrSegment(row[1])
 		tempWord := make(map[string]bool)
 		for _, word := range words {
 			tempWord[word] = true
@@ -154,6 +161,7 @@ func BuildMapTree(rows [][]string, splitWords [][]string) (strMap map[string](ui
 				strMap[row[0]] = newNode.INode
 				iNodeReverse[newNode.INode] = row[0]
 				iNodeMap[newNode.INode] = newNode
+				iNodeToWords[newNode.INode] = splitWords[rowI*2]
 			}
 		} else {
 			if _, ok2 := strMap[row[0]]; ok2 {
@@ -170,7 +178,8 @@ func BuildMapTree(rows [][]string, splitWords [][]string) (strMap map[string](ui
 				strMap[row[0]] = newNode.INode
 				iNodeMap[parentNode.INode] = parentNode
 				iNodeMap[newNode.INode] = newNode
-				iNodeToWords[parentNode.INode] = splitWords[rowI]
+				iNodeToWords[newNode.INode] = splitWords[rowI*2]
+				iNodeToWords[parentNode.INode] = splitWords[rowI*2+1]
 			}
 		}
 	}

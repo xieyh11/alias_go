@@ -6,7 +6,8 @@ import (
 	"os"
 	"strconv"
 
-	"./jieba"
+	// "./jieba"
+	"./hanlp"
 
 	"./buildtree"
 	"./searchtree"
@@ -27,12 +28,12 @@ func searchSplit() {
 	scanner.Split(bufio.ScanLines)
 
 	//res := make([][]string, 0)
-	jieba := jieba.NewJieba()
-	defer jieba.Free()
+	// jieba := jieba.NewJieba()
+	// defer jieba.Free()
 
 	for scanner.Scan() {
 		line := scanner.Text()
-		name := jieba.Cut(line, true)
+		name := hanlp.StrSegment(line)
 		scores := searchtree.SearchSplitStrings(indexStr, strMap, iNodeToWords, wordFreq, name, 10)
 		topK := searchtree.TopKScores(scores, 20)
 		for i := range topK {
