@@ -11,6 +11,7 @@ import (
 	// "../jieba"
 	"../hanlp"
 
+	"../floatvector"
 	"../maptree"
 )
 
@@ -61,7 +62,32 @@ func isEnglishPunc(str string) bool {
 	return false
 }
 
-func countWords(words []string, wordSet map[string]float64, splitWords [][]string) [][]string {
+func removeChinesePunc(word string) string {
+	for _, punc := range ChinesePunc {
+		if strings.Contains(word, punc) {
+			word = strings.Replace(word, punc, "", -1)
+		}
+	}
+	return word
+}
+
+func removeEnglishPunc(word string) string {
+	for _, punc := range EnglishPunc {
+		if strings.Contains(word, punc) {
+			word = strings.Replace(word, punc, "", -1)
+		}
+	}
+	return word
+}
+
+func removePuncFromWord(words []string) {
+	for i := range words {
+		words[i] = removeChinesePunc(words[i])
+		words[i] = removeEnglishPunc(words[i])
+	}
+}
+
+func removePunc(words []string) []string {
 	for i := 0; i < len(words); {
 		if isChinesePunc(words[i]) || isEnglishPunc(words[i]) {
 			words = append(words[:i], words[i+1:]...)
@@ -69,8 +95,15 @@ func countWords(words []string, wordSet map[string]float64, splitWords [][]strin
 			i++
 		}
 	}
+	return words
+}
+
+func countWords(wordsSimple, wordsFull []string, wordSet map[string]float64) {
 	tempWord := make(map[string]bool)
-	for _, word := range words {
+	for _, word := range wordsSimple {
+		tempWord[word] = true
+	}
+	for _, word := range wordsFull {
 		tempWord[word] = true
 	}
 	for k, _ := range tempWord {
@@ -80,7 +113,6 @@ func countWords(words []string, wordSet map[string]float64, splitWords [][]strin
 			wordSet[k] = 1
 		}
 	}
-	return append(splitWords, words)
 }
 
 func CountWordFrequence(csvNames [][]string) (map[string]float64, [][]string) {
@@ -92,15 +124,28 @@ func CountWordFrequence(csvNames [][]string) (map[string]float64, [][]string) {
 
 	for _, row := range csvNames {
 		words := hanlp.StrSegment(row[0])
-		splitWords = countWords(words, wordSet, splitWords)
+		words = removePunc(words)
+		removePuncFromWord(words)
+		splitWords = append(splitWords, words)
 		words = hanlp.StrSegment(row[1])
-		splitWords = countWords(words, wordSet, splitWords)
+		words = removePunc(words)
+		removePuncFromWord(words)
+		splitWords = append(splitWords, words)
+		countWords(splitWords[len(splitWords)-2], splitWords[len(splitWords)-1], wordSet)
 	}
 
 	for k, v := range wordSet {
 		wordSet[k] = v / float64(len(csvNames))
 	}
 	return wordSet, splitWords
+}
+
+func Word2Vector(wordFre map[string]float64) map[string][]float64 {
+	res := make(map[string][]float64)
+	for k, _ := range wordFre {
+		res[k] = hanlp.Word2Vector(k)
+	}
+	return res
 }
 
 func RemoveCommonWords(csvNames [][]string, threshold float64) {
@@ -187,16 +232,18 @@ func BuildMapTree(rows [][]string, splitWords [][]string) (strMap map[string](ui
 	return
 }
 
-func DumpTree(strMap map[string](uint64), iNodeMap map[uint64](*maptree.MapTreeNode), iNodeToWords map[uint64]([]string), wordFreq map[string]float64, file_prefix string) {
+func DumpTree(strMap map[string](uint64), iNodeMap map[uint64](*maptree.MapTreeNode), iNodeToWords map[uint64]([]string), wordFreq map[string]float64, wordVector map[string][]float64, file_prefix string) {
 	strMapFile, _ := os.Create(file_prefix + "str_map.pack")
 	treeFile, _ := os.Create(file_prefix + "tree.pack")
 	wordsFile, _ := os.Create(file_prefix + "words.pack")
 	freqFile, _ := os.Create(file_prefix + "freq.pack")
+	vecFile, _ := os.Create(file_prefix + "vector.pack")
 
 	defer strMapFile.Close()
 	defer treeFile.Close()
 	defer wordsFile.Close()
 	defer freqFile.Close()
+	defer vecFile.Close()
 
 	for k, v := range strMap {
 		tempTreeNode := iNodeMap[v]
@@ -213,14 +260,18 @@ func DumpTree(strMap map[string](uint64), iNodeMap map[uint64](*maptree.MapTreeN
 	for k, v := range wordFreq {
 		freqFile.WriteString(k + " " + strconv.FormatFloat(v, 'f', -1, 64) + "\n")
 	}
+	for k, v := range wordVector {
+		vecFile.WriteString(k + " " + floatvector.VectorToString(v) + "\n")
+	}
 }
 
-func LoadTree(file_prefix string) (strMap map[string](uint64), iNodeMap map[uint64](*maptree.MapTreeNode), iNodeReverse map[uint64]string, iNodeToWords map[uint64]([]string), wordFreq map[string]float64) {
+func LoadTree(file_prefix string) (strMap map[string](uint64), iNodeMap map[uint64](*maptree.MapTreeNode), iNodeReverse map[uint64]string, iNodeToWords map[uint64]([]string), wordFreq map[string]float64, wordVector map[string][]float64) {
 	iNodeMap = make(map[uint64](*maptree.MapTreeNode))
 	strMap = make(map[string](uint64))
 	iNodeReverse = make(map[uint64]string)
 	iNodeToWords = make(map[uint64]([]string))
 	wordFreq = make(map[string]float64)
+	wordVector = make(map[string][]float64)
 
 	strMapFile, _ := os.Open(file_prefix + "str_map.pack")
 	defer strMapFile.Close()
@@ -312,6 +363,24 @@ func LoadTree(file_prefix string) (strMap map[string](uint64), iNodeMap map[uint
 			splits := strings.Split(line, " ")
 			freq, _ := strconv.ParseFloat(splits[1], 64)
 			wordFreq[splits[0]] = freq
+		}
+	}
+
+	vecFile, _ := os.Open(file_prefix + "vector.pack")
+	defer vecFile.Close()
+
+	vecScanner := bufio.NewScanner(vecFile)
+	vecScanner.Split(bufio.ScanLines)
+
+	for vecScanner.Scan() {
+		line := vecScanner.Text()
+		if len(line) > 0 {
+			splits := strings.Split(line, " ")
+			vector := make([]float64, len(splits)-1)
+			for i := 1; i < len(splits); i++ {
+				vector[i-1], _ = strconv.ParseFloat(splits[i], 64)
+			}
+			wordVector[splits[0]] = vector
 		}
 	}
 

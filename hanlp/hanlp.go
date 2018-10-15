@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 )
 
 var urlPrefix = "http://180.8.50.64:8080/webhanlp/"
@@ -40,58 +41,50 @@ func parseArrayFloat(str string) []float64 {
 func StrSegment(str string) []string {
 	strEn, _ := url.ParseQuery(segKey + "=" + str)
 	response, err := http.Get(urlPrefix + segment + "?" + strEn.Encode())
-	defer response.Body.Close()
-	if err != nil {
-		fmt.Println("Get Error in HanLP segment!")
-	}
-	for response.StatusCode != http.StatusOK {
+	tryTimes := 10
+	for tryTimes > 0 && (err != nil || response.StatusCode != http.StatusOK) {
+		tryTimes--
 		response, err = http.Get(urlPrefix + segment + "?" + strEn.Encode())
-		if err != nil {
-			break
-		}
+		time.Sleep(5 * time.Second)
 	}
-	if response.StatusCode == http.StatusOK {
-		body, _ := ioutil.ReadAll(response.Body)
-		return parseArrayString(string(body))
-	} else {
-		return []string{}
+	if err != nil || response.StatusCode != http.StatusOK {
+		panic(fmt.Sprintln(err))
 	}
+	defer response.Body.Close()
+	body, _ := ioutil.ReadAll(response.Body)
+	return parseArrayString(string(body))
 }
 
 func Word2Vector(word string) []float64 {
 	wordEn, _ := url.ParseQuery(wordKey + "=" + word)
 	response, err := http.Get(urlPrefix + word2Vector + "?" + wordEn.Encode())
-	defer response.Body.Close()
-	if err != nil {
-		fmt.Println("Get Error in HanLP word2vector!")
-	}
-	for response.StatusCode != http.StatusOK {
+	tryTimes := 10
+	for tryTimes > 0 && (err != nil || response.StatusCode != http.StatusOK) {
+		tryTimes--
 		response, err = http.Get(urlPrefix + word2Vector + "?" + wordEn.Encode())
-		if err != nil {
-			break
-		}
+		time.Sleep(5 * time.Second)
 	}
-	if response.StatusCode == http.StatusOK {
-		body, _ := ioutil.ReadAll(response.Body)
-		if strings.Contains(string(body), "null") {
-			wordRune := []rune(word)
-			if len(wordRune) == 1 {
-				return make([]float64, vectorDim)
-			}
-			vecRes := []float64{}
-			for i := range wordRune {
-				tempR := Word2Vector(string(wordRune[i]))
-				if len(vecRes) == 0 {
-					vecRes = tempR
-				} else {
-					floatvector.AddVectorsInPlace(vecRes, tempR)
-				}
-			}
-			return vecRes
-		} else {
-			return parseArrayFloat(string(body))
+	if err != nil || response.StatusCode != http.StatusOK {
+		panic(fmt.Sprintln(err))
+	}
+	defer response.Body.Close()
+	body, _ := ioutil.ReadAll(response.Body)
+	if strings.Contains(string(body), "null") {
+		wordRune := []rune(word)
+		if len(wordRune) == 1 {
+			return make([]float64, vectorDim)
 		}
+		vecRes := []float64{}
+		for i := range wordRune {
+			tempR := Word2Vector(string(wordRune[i]))
+			if len(vecRes) == 0 {
+				vecRes = tempR
+			} else {
+				floatvector.AddVectorsInPlace(vecRes, tempR)
+			}
+		}
+		return vecRes
 	} else {
-		return []float64{}
+		return parseArrayFloat(string(body))
 	}
 }

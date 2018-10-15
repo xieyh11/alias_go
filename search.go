@@ -11,7 +11,7 @@ import (
 )
 
 func search() {
-	strMap, iNodeMap, iNodeReverse, _, _ := buildtree.LoadTree("company_")
+	strMap, iNodeMap, iNodeReverse, _, _, _ := buildtree.LoadTree("company_")
 	indexStr := make([]string, len(strMap))
 	index := 0
 	for k, _ := range strMap {

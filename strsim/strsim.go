@@ -1,6 +1,8 @@
 package strsim
 
 import (
+	"../floatvector"
+	"../hanlp"
 	"github.com/cpmech/gosl/graph"
 )
 
@@ -218,6 +220,39 @@ func SplitCommonScore(str1, base []string, wordFreq map[string]float64) float64 
 		costMatrix[i] = make([]float64, cols)
 		for j := range costMatrix[i] {
 			costMatrix[i][j] = -RunesMaxCommonScore([]rune(str1[i]), []rune(base[j]), 0, 1, 0)
+		}
+	}
+	mnk.Init(rows, cols)
+	mnk.SetCostMatrix(costMatrix)
+	mnk.Run()
+	totalFreq := float64(0)
+	currentScore := float64(0)
+	for i := 0; i < rows; i++ {
+		j := mnk.Links[i]
+		if j != -1 {
+			totalFreq += (1 - wordFreq[base[j]])
+			currentScore += (1 - wordFreq[base[j]]) * (-costMatrix[i][j])
+		}
+	}
+	return currentScore / totalFreq
+}
+
+func SplitVectorDis(str1, base []string, wordFreq map[string]float64, wordVector map[string][]float64) float64 {
+	var mnk graph.Munkres
+	rows, cols := len(str1), len(base)
+	costMatrix := make([][]float64, rows)
+	str1Vec := make([][]float64, 0)
+	for i := range str1 {
+		str1Vec = append(str1Vec, hanlp.Word2Vector(str1[i]))
+	}
+	baseVec := make([][]float64, 0)
+	for i := range base {
+		baseVec = append(baseVec, wordVector[base[i]])
+	}
+	for i := range costMatrix {
+		costMatrix[i] = make([]float64, cols)
+		for j := range costMatrix[i] {
+			costMatrix[i][j] = floatvector.VectorsDis(str1Vec[i], baseVec[j])
 		}
 	}
 	mnk.Init(rows, cols)

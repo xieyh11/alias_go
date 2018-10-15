@@ -1,10 +1,18 @@
 package main
 
+import (
+// "./buildtree"
+// "./hanlp"
+// "./strsim"
+// "fmt"
+)
+
 func main() {
-	// strMap, _, _, iNodeToWords, wordFreq := buildtree.LoadTree("company_")
-	// base := "金堆城钼业股份有限公司"
+	// strMap, _, _, iNodeToWords, wordFreq, wordVector := buildtree.LoadTree("company_")
+	// base := "北京弘高创意建筑设计股份有限公司"
 	// baseSplit := iNodeToWords[strMap[base]]
-	// str := []string{"栾川", "钼业"}
-	// fmt.Println(strsim.SplitCommonScore(str, baseSplit, wordFreq))
+	// str := "好莱客创意"
+	// strSplit := hanlp.StrSegment(str)
+	// fmt.Println(strsim.SplitVectorDis(strSplit, baseSplit, wordFreq, wordVector))
 	searchSplit()
 }

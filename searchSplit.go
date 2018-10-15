@@ -14,7 +14,7 @@ import (
 )
 
 func searchSplit() {
-	strMap, iNodeMap, iNodeReverse, iNodeToWords, wordFreq := buildtree.LoadTree("company_")
+	strMap, iNodeMap, iNodeReverse, iNodeToWords, wordFreq, wordVector := buildtree.LoadTree("company_")
 	indexStr := make([]string, len(strMap))
 	index := 0
 	for k, _ := range strMap {
@@ -34,7 +34,7 @@ func searchSplit() {
 	for scanner.Scan() {
 		line := scanner.Text()
 		name := hanlp.StrSegment(line)
-		scores := searchtree.SearchSplitStrings(indexStr, strMap, iNodeToWords, wordFreq, name, 10)
+		scores := searchtree.SearchSplitStrings(indexStr, strMap, iNodeToWords, wordFreq, wordVector, name, 10)
 		topK := searchtree.TopKScores(scores, 20)
 		for i := range topK {
 			str := indexStr[topK[i]] + " " + strconv.FormatFloat(scores[topK[i]], 'f', -1, 64) + " "

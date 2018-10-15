@@ -11,9 +11,10 @@ func build() {
 	names := buildtree.ReadCsv("../all_companies.csv")
 	wordFre, splitWords := buildtree.CountWordFrequence(names)
 	strMap, iNodeMap, _, iNodeToWords := buildtree.BuildMapTree(names, splitWords)
-	buildtree.DumpTree(strMap, iNodeMap, iNodeToWords, wordFre, "company_")
+	wordVector := buildtree.Word2Vector(wordFre)
+	buildtree.DumpTree(strMap, iNodeMap, iNodeToWords, wordFre, wordVector, "company_")
 
-	strMap1, iNodeMap1, _, iNodeToWords1, wordFre1 := buildtree.LoadTree("company_")
+	strMap1, iNodeMap1, _, iNodeToWords1, wordFre1, wordVector1 := buildtree.LoadTree("company_")
 	for k, v := range strMap {
 		if v1, ok := strMap1[k]; !ok || (v != v1) {
 			fmt.Println("String Map to INode error: " + k)
@@ -61,6 +62,28 @@ func build() {
 			}
 		} else {
 			fmt.Println("Word's freq is not in the file: ", k)
+		}
+	}
+	for k, v := range wordVector {
+		if v1, ok := wordVector1[k]; ok {
+			similiar := true
+			if len(v) == len(v1) {
+				for i := range v {
+					if math.Abs(v[i]-v1[i]) > 1e-5 {
+						similiar = false
+					}
+					if !similiar {
+						break
+					}
+				}
+			} else {
+				similiar = false
+			}
+			if !similiar {
+				fmt.Println("Word's Vector is not same: ", k, v, v1)
+			}
+		} else {
+			fmt.Println("Word's Vector is not in the file: ", k)
 		}
 	}
 }

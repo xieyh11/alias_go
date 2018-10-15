@@ -2,7 +2,6 @@ package searchtree
 
 import (
 	"container/heap"
-	"strings"
 
 	"../strsim"
 )
@@ -38,26 +37,22 @@ func SearchStrings(names []string, name string, threads int) []float64 {
 	return scores
 }
 
-func subSearchSplitStrings(names []string, strMap map[string]uint64, iNodeToWords map[uint64]([]string), wordFreq map[string]float64, name []string, scores []float64, count chan int) {
+func subSearchSplitStrings(names []string, strMap map[string]uint64, iNodeToWords map[uint64]([]string), wordFreq map[string]float64, wordVector map[string][]float64, name []string, scores []float64, count chan int) {
 	for strI := range names {
-		if v, ok := iNodeToWords[strMap[names[strI]]]; ok {
-			scores[strI] = strsim.SplitCommonScore(name, v, wordFreq)
-		} else {
-			scores[strI] = strsim.RunesMaxCommonScore([]rune(names[strI]), []rune(strings.Join(name, "")), 0, 1, 0)
-		}
+		scores[strI] = strsim.SplitVectorDis(name, iNodeToWords[strMap[names[strI]]], wordFreq, wordVector)
 	}
 	count <- 1
 }
 
-func SearchSplitStrings(names []string, strMap map[string]uint64, iNodeToWords map[uint64]([]string), wordFreq map[string]float64, name []string, threads int) []float64 {
+func SearchSplitStrings(names []string, strMap map[string]uint64, iNodeToWords map[uint64]([]string), wordFreq map[string]float64, wordVector map[string][]float64, name []string, threads int) []float64 {
 	scores := make([]float64, len(names))
 	per_size := len(names) / threads
 	count := make(chan int)
 	for i := 0; i < threads; i++ {
 		if i == threads-1 {
-			go subSearchSplitStrings(names[i*per_size:], strMap, iNodeToWords, wordFreq, name, scores[i*per_size:], count)
+			go subSearchSplitStrings(names[i*per_size:], strMap, iNodeToWords, wordFreq, wordVector, name, scores[i*per_size:], count)
 		} else {
-			go subSearchSplitStrings(names[i*per_size:i*per_size+per_size], strMap, iNodeToWords, wordFreq, name, scores[i*per_size:i*per_size+per_size], count)
+			go subSearchSplitStrings(names[i*per_size:i*per_size+per_size], strMap, iNodeToWords, wordFreq, wordVector, name, scores[i*per_size:i*per_size+per_size], count)
 		}
 	}
 	defer close(count)
