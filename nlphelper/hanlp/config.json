@@ -1,0 +1,13 @@
+{
+    "url_config": {
+        "url_host": "http://180.8.50.64:8080/webhanlp/",
+        "segment_url": "segment",
+        "word2vector_url": "word",
+        "segment_keyword": "str",
+        "word2vector_keyword": "word"
+    },
+    "response_config": {
+        "array_segment": ", ",
+        "word2vector_dim": 300
+    }
+}

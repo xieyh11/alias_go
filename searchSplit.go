@@ -6,22 +6,25 @@ import (
 	"os"
 	"strconv"
 
-	// "./jieba"
-	"./hanlp"
+	"./nlphelper"
+	"./nlphelper/hanlp"
+	"./nlphelper/jieba"
 
 	"./buildtree"
 	"./searchtree"
 )
 
-func searchSplit() {
-	strMap, iNodeMap, iNodeReverse, iNodeToWords, wordFreq, wordVector := buildtree.LoadTree("company_")
-	indexStr := make([]string, len(strMap))
+func searchSplit(file string, nlpUsing int) {
+	filePrefix := "company_"
+	mapTree := buildtree.LoadTree(filePrefix)
+	strMessage := buildtree.LoadMessage(filePrefix)
+	indexStr := make([]string, len(mapTree.StrToINode))
 	index := 0
-	for k, _ := range strMap {
+	for k, _ := range mapTree.StrToINode {
 		indexStr[index] = k
 		index++
 	}
-	searchFile, _ := os.Open("search.txt")
+	searchFile, _ := os.Open(file)
 	defer searchFile.Close()
 
 	scanner := bufio.NewScanner(searchFile)
@@ -30,18 +33,32 @@ func searchSplit() {
 	//res := make([][]string, 0)
 	// jieba := jieba.NewJieba()
 	// defer jieba.Free()
+	var segmentor nlphelper.WordsSegment
+	var word2vector nlphelper.Word2Vector
+	hanlpConfig := hanlp.NewHanLPConfig("")
+	word2vector = hanlpConfig
+	switch nlpUsing {
+	case nlphelper.NlpUsingJieba:
+		segmentor = jieba.NewJieba()
+	default:
+		segmentor = hanlpConfig
+	}
 
 	for scanner.Scan() {
 		line := scanner.Text()
-		name := hanlp.StrSegment(line)
-		scores := searchtree.SearchSplitStrings(indexStr, strMap, iNodeToWords, wordFreq, wordVector, name, 10)
+		name := segmentor.Segment(line)
+		nameVector := make([][]float64, len(name))
+		for i := range name {
+			nameVector[i] = word2vector.ToVector(name[i])
+		}
+		scores := searchtree.SearchSplitStrings(indexStr, mapTree, strMessage, name, nameVector, 10)
 		topK := searchtree.TopKScores(scores, 20)
 		for i := range topK {
 			str := indexStr[topK[i]] + " " + strconv.FormatFloat(scores[topK[i]], 'f', -1, 64) + " "
-			iNode := strMap[indexStr[topK[i]]]
-			iTreeNode := iNodeMap[iNode]
+			iNode := mapTree.StrToINode[indexStr[topK[i]]]
+			iTreeNode := mapTree.INodeToTreeNode[iNode]
 			rootOf := iTreeNode.ToRoot()
-			str += iNodeReverse[rootOf.INode]
+			str += mapTree.INodeToStr[rootOf.INode]
 			fmt.Println(str)
 		}
 		fmt.Println()

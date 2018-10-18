@@ -3,6 +3,7 @@ package searchtree
 import (
 	"container/heap"
 
+	"../buildtree"
 	"../strsim"
 )
 
@@ -37,22 +38,22 @@ func SearchStrings(names []string, name string, threads int) []float64 {
 	return scores
 }
 
-func subSearchSplitStrings(names []string, strMap map[string]uint64, iNodeToWords map[uint64]([]string), wordFreq map[string]float64, wordVector map[string][]float64, name []string, scores []float64, count chan int) {
+func subSearchSplitStrings(names []string, mapTree buildtree.MapTree, strMessage buildtree.StrMessage, name []string, nameVector [][]float64, scores []float64, count chan int) {
 	for strI := range names {
-		scores[strI] = strsim.SplitVectorDis(name, iNodeToWords[strMap[names[strI]]], wordFreq, wordVector)
+		scores[strI] = strsim.SplitVectorDis(name, strMessage.INodeToWords[mapTree.StrToINode[names[strI]]], nameVector, strMessage.WordsWeight, strMessage.WordsVector)
 	}
 	count <- 1
 }
 
-func SearchSplitStrings(names []string, strMap map[string]uint64, iNodeToWords map[uint64]([]string), wordFreq map[string]float64, wordVector map[string][]float64, name []string, threads int) []float64 {
+func SearchSplitStrings(names []string, mapTree buildtree.MapTree, strMessage buildtree.StrMessage, name []string, nameVector [][]float64, threads int) []float64 {
 	scores := make([]float64, len(names))
 	per_size := len(names) / threads
 	count := make(chan int)
 	for i := 0; i < threads; i++ {
 		if i == threads-1 {
-			go subSearchSplitStrings(names[i*per_size:], strMap, iNodeToWords, wordFreq, wordVector, name, scores[i*per_size:], count)
+			go subSearchSplitStrings(names[i*per_size:], mapTree, strMessage, name, nameVector, scores[i*per_size:], count)
 		} else {
-			go subSearchSplitStrings(names[i*per_size:i*per_size+per_size], strMap, iNodeToWords, wordFreq, wordVector, name, scores[i*per_size:i*per_size+per_size], count)
+			go subSearchSplitStrings(names[i*per_size:i*per_size+per_size], mapTree, strMessage, name, nameVector, scores[i*per_size:i*per_size+per_size], count)
 		}
 	}
 	defer close(count)

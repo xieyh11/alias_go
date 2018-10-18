@@ -6,14 +6,16 @@ import (
 	"os"
 )
 
-func NewJieba() *gojieba.Jieba {
+type Jieba gojieba.Jieba
+
+func NewJieba() *Jieba {
 	res := gojieba.NewJieba()
 
 	userDict, err := os.Open("user.dict")
 	defer userDict.Close()
 
 	if err != nil {
-		return res
+		return (*Jieba)(res)
 	}
 
 	userDictScan := bufio.NewScanner(userDict)
@@ -23,5 +25,9 @@ func NewJieba() *gojieba.Jieba {
 		line := userDictScan.Text()
 		res.AddWord(line)
 	}
-	return res
+	return (*Jieba)(res)
+}
+
+func (a *Jieba) Segment(str string) []string {
+	return (*gojieba.Jieba)(a).Cut(str, true)
 }

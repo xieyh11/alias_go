@@ -5,34 +5,32 @@ import (
 	"encoding/csv"
 	"fmt"
 	"os"
-	"strconv"
-	"strings"
 
-	// "../jieba"
-	"../hanlp"
+	"../nlphelper"
+	"../nlphelper/hanlp"
+	"../nlphelper/jieba"
 
-	"../floatvector"
 	"../maptree"
+	"../stringhelper"
 )
 
 // Read a csv and get 2D array of company names with first column its simple name and second column its full name
-func ReadCsv(filename string) [][]string {
+func ReadCsv(filename string, hasIndex, hasColumnName bool) [][]string {
 	csvFile, err := os.Open(filename)
 	defer csvFile.Close()
 	if err != nil {
-		fmt.Println(err)
+		panic(fmt.Sprintln(err))
 	}
 	csvReader := csv.NewReader(bufio.NewReader(csvFile))
 	err = nil
 	res, err := csvReader.ReadAll()
 	if err != nil {
-		fmt.Println(err)
-		return res
+		panic(fmt.Sprintln(err))
 	}
-	if res[0][1] == "公司简称" {
+	if hasColumnName {
 		res = res[1:]
 	}
-	if len(res[0]) == 3 {
+	if hasIndex {
 		for i := range res {
 			res[i] = res[i][1:]
 		}
@@ -40,191 +38,130 @@ func ReadCsv(filename string) [][]string {
 	return res
 }
 
-var ChinesePunc = []string{"。", "，", "（", "）", "？", "！", "、", "；", "：", "”", "“", "‘", "’", "——", "……", "《", "》", "<", ">"}
-
-func isChinesePunc(str string) bool {
-	for _, punc := range ChinesePunc {
-		if punc == str {
-			return true
+func SplitStringIntoWords(csvDatas [][]string, segmenter nlphelper.WordsSegment) [][][]string {
+	if len(csvDatas) == 0 || len(csvDatas[0]) == 0 {
+		return [][][]string{}
+	}
+	rows, cols := len(csvDatas), len(csvDatas[0])
+	res := make([][][]string, rows)
+	for i := range res {
+		res[i] = make([][]string, cols)
+		for j := range res[i] {
+			if csvDatas[i][j] == "" {
+				res[i][j] = []string{}
+			} else {
+				res[i][j] = stringhelper.RemovePuncFromWords(segmenter.Segment(csvDatas[i][j]))
+			}
 		}
-	}
-	return false
-}
-
-var EnglishPunc = []string{".", ",", "(", ")", ":", ";", "<", ">"}
-
-func isEnglishPunc(str string) bool {
-	for _, punc := range EnglishPunc {
-		if punc == str {
-			return true
-		}
-	}
-	return false
-}
-
-func removeChinesePunc(word string) string {
-	for _, punc := range ChinesePunc {
-		if strings.Contains(word, punc) {
-			word = strings.Replace(word, punc, "", -1)
-		}
-	}
-	return word
-}
-
-func removeEnglishPunc(word string) string {
-	for _, punc := range EnglishPunc {
-		if strings.Contains(word, punc) {
-			word = strings.Replace(word, punc, "", -1)
-		}
-	}
-	return word
-}
-
-func removePuncFromWord(words []string) {
-	for i := range words {
-		words[i] = removeChinesePunc(words[i])
-		words[i] = removeEnglishPunc(words[i])
-	}
-}
-
-func removePunc(words []string) []string {
-	for i := 0; i < len(words); {
-		if isChinesePunc(words[i]) || isEnglishPunc(words[i]) {
-			words = append(words[:i], words[i+1:]...)
-		} else {
-			i++
-		}
-	}
-	return words
-}
-
-func countWords(wordsSimple, wordsFull []string, wordSet map[string]float64) {
-	tempWord := make(map[string]bool)
-	for _, word := range wordsSimple {
-		tempWord[word] = true
-	}
-	for _, word := range wordsFull {
-		tempWord[word] = true
-	}
-	for k, _ := range tempWord {
-		if _, ok := wordSet[k]; ok {
-			wordSet[k]++
-		} else {
-			wordSet[k] = 1
-		}
-	}
-}
-
-func CountWordFrequence(csvNames [][]string) (map[string]float64, [][]string) {
-	wordSet := make(map[string]float64)
-	splitWords := make([][]string, 0)
-
-	// jieba := jieba.NewJieba()
-	// defer jieba.Free()
-
-	for _, row := range csvNames {
-		words := hanlp.StrSegment(row[0])
-		words = removePunc(words)
-		removePuncFromWord(words)
-		splitWords = append(splitWords, words)
-		words = hanlp.StrSegment(row[1])
-		words = removePunc(words)
-		removePuncFromWord(words)
-		splitWords = append(splitWords, words)
-		countWords(splitWords[len(splitWords)-2], splitWords[len(splitWords)-1], wordSet)
-	}
-
-	for k, v := range wordSet {
-		wordSet[k] = v / float64(len(csvNames))
-	}
-	return wordSet, splitWords
-}
-
-func Word2Vector(wordFre map[string]float64) map[string][]float64 {
-	res := make(map[string][]float64)
-	for k, _ := range wordFre {
-		res[k] = hanlp.Word2Vector(k)
 	}
 	return res
 }
 
-func RemoveCommonWords(csvNames [][]string, threshold float64) {
-	wordSet := make(map[string]int)
+const (
+	WordsWeightEachRowOnce = iota
+	WordsWeightEachStrOnce
+	WordsWeightEachWord
+)
 
-	// jieba := jieba.NewJieba()
-	// defer jieba.Free()
-
-	for _, row := range csvNames {
-		words := hanlp.StrSegment(row[1])
-		tempWord := make(map[string]bool)
-		for _, word := range words {
-			tempWord[word] = true
-		}
-		for k, _ := range tempWord {
-			if _, ok := wordSet[k]; ok {
-				wordSet[k]++
-			} else {
-				wordSet[k] = 1
-			}
-		}
+func countWordsOnce(words []string, wordSet map[string]float64) {
+	tempWord := make(map[string]bool)
+	for _, word := range words {
+		tempWord[word] = true
 	}
-	wordAboveThre := make([]string, 0)
-	for k, v := range wordSet {
-		if float64(v)/float64(len(csvNames)) >= threshold {
-			wordAboveThre = append(wordAboveThre, k)
-		}
-	}
-	for _, delWord := range wordAboveThre {
-		for i := range csvNames {
-			csvNames[i][1] = strings.Replace(csvNames[i][1], delWord, "", -1)
-		}
+	for k, _ := range tempWord {
+		wordSet[k]++
 	}
 }
 
-func BuildMapTree(rows [][]string, splitWords [][]string) (strMap map[string](uint64), iNodeMap map[uint64](*maptree.MapTreeNode), iNodeReverse map[uint64]string, iNodeToWords map[uint64]([]string)) {
-	iNodeMap = make(map[uint64](*maptree.MapTreeNode))
-	strMap = make(map[string](uint64))
-	iNodeReverse = make(map[uint64]string)
-	iNodeToWords = make(map[uint64]([]string))
+func EvaluateWordsWeight(words [][][]string, method int) map[string]float64 {
+	res := make(map[string]float64)
+	sum := 0.0
+	switch method {
+	case WordsWeightEachRowOnce:
+		sum = float64(len(words))
+		for _, row := range words {
+			temp := make([]string, 0)
+			for _, col := range row {
+				temp = append(temp, col...)
+			}
+			if len(temp) == 0 {
+				sum--
+			} else {
+				countWordsOnce(temp, res)
+			}
+		}
+	default:
+	}
+	for k, v := range res {
+		res[k] = 1 - v/sum
+	}
+	return res
+}
+
+type MapTree struct {
+	StrToINode      map[string]uint64
+	INodeToTreeNode map[uint64](*maptree.MapTreeNode)
+	INodeToStr      map[uint64]string
+}
+
+type StrMessage struct {
+	INodeToWords map[uint64][]string
+	WordsVector  map[string][]float64
+	WordsWeight  map[string]float64
+}
+
+func BuildMapTree(csvDatas [][]string) (mapTree MapTree) {
+	mapTree.INodeToTreeNode = make(map[uint64](*maptree.MapTreeNode))
+	mapTree.StrToINode = make(map[string](uint64))
+	mapTree.INodeToStr = make(map[uint64]string)
 
 	count := uint64(0)
 
-	for rowI, row := range rows {
-		if _, ok1 := strMap[row[1]]; ok1 {
-			if _, ok2 := strMap[row[0]]; ok2 {
-				tempNode := iNodeMap[strMap[row[0]]]
-				tempNode = tempNode.ToRoot()
-				tempName := iNodeReverse[tempNode.INode]
-				if tempName != row[1] {
-					fmt.Println("Error, simple name appear twice", row[0])
+	cols := len(csvDatas[0])
+	for _, row := range csvDatas {
+		if cols == 2 {
+			if _, ok1 := mapTree.StrToINode[row[cols-1]]; ok1 {
+				if _, ok2 := mapTree.StrToINode[row[0]]; ok2 {
+					tempNode := mapTree.INodeToTreeNode[mapTree.StrToINode[row[0]]]
+					tempNode = tempNode.ToRoot()
+					tempName := mapTree.INodeToStr[tempNode.INode]
+					if tempName != row[1] {
+						fmt.Println("Error, simple name appear twice", row[0])
+					}
+				} else {
+					parentNode := mapTree.INodeToTreeNode[mapTree.StrToINode[row[1]]]
+					parentNode = parentNode.ToRoot()
+					newNode := maptree.NewMapTreeNodeWithParent(count, parentNode)
+					count++
+					mapTree.StrToINode[row[0]] = newNode.INode
+					mapTree.INodeToStr[newNode.INode] = row[0]
+					mapTree.INodeToTreeNode[newNode.INode] = newNode
 				}
 			} else {
-				parentNode := iNodeMap[strMap[row[1]]]
-				parentNode = parentNode.ToRoot()
-				newNode := maptree.NewMapTreeNodeWithParent(count, parentNode)
-				count++
-				strMap[row[0]] = newNode.INode
-				iNodeReverse[newNode.INode] = row[0]
-				iNodeMap[newNode.INode] = newNode
-				iNodeToWords[newNode.INode] = splitWords[rowI*2]
+				if _, ok2 := mapTree.StrToINode[row[0]]; ok2 {
+					fmt.Println("Error, simple name appear twice", row[0])
+				} else {
+					mapTree.StrToINode[row[1]] = count
+					count++
+					parentNode := maptree.NewMapTreeNode(mapTree.StrToINode[row[1]])
+					newNode := maptree.NewMapTreeNodeWithParent(count, parentNode)
+					count++
+
+					mapTree.INodeToStr[parentNode.INode] = row[1]
+					mapTree.INodeToStr[newNode.INode] = row[0]
+					mapTree.StrToINode[row[0]] = newNode.INode
+					mapTree.INodeToTreeNode[parentNode.INode] = parentNode
+					mapTree.INodeToTreeNode[newNode.INode] = newNode
+				}
 			}
 		} else {
-			if _, ok2 := strMap[row[0]]; ok2 {
-				fmt.Println("Error, simple name appear twice", row[0])
-			} else {
-				strMap[row[1]] = count
-				count++
-				parentNode := maptree.NewMapTreeNode(strMap[row[1]])
-				newNode := maptree.NewMapTreeNodeWithParent(count, parentNode)
+			if _, ok := mapTree.StrToINode[row[0]]; !ok {
+				newNode := maptree.NewMapTreeNode(count)
 				count++
 
-				iNodeReverse[parentNode.INode] = row[1]
-				iNodeReverse[newNode.INode] = row[0]
-				strMap[row[0]] = newNode.INode
-				iNodeMap[parentNode.INode] = parentNode
-				iNodeMap[newNode.INode] = newNode
-				iNodeToWords[newNode.INode] = splitWords[rowI*2]
-				iNodeToWords[parentNode.INode] = splitWords[rowI*2+1]
+				mapTree.StrToINode[row[0]] = newNode.INode
+				mapTree.INodeToTreeNode[newNode.INode] = newNode
+				mapTree.INodeToStr[newNode.INode] = row[0]
 			}
 		}
 	}
@@ -232,156 +169,35 @@ func BuildMapTree(rows [][]string, splitWords [][]string) (strMap map[string](ui
 	return
 }
 
-func DumpTree(strMap map[string](uint64), iNodeMap map[uint64](*maptree.MapTreeNode), iNodeToWords map[uint64]([]string), wordFreq map[string]float64, wordVector map[string][]float64, file_prefix string) {
-	strMapFile, _ := os.Create(file_prefix + "str_map.pack")
-	treeFile, _ := os.Create(file_prefix + "tree.pack")
-	wordsFile, _ := os.Create(file_prefix + "words.pack")
-	freqFile, _ := os.Create(file_prefix + "freq.pack")
-	vecFile, _ := os.Create(file_prefix + "vector.pack")
+func EvaluateStrMessage(csvDatas [][]string, mapTree MapTree, nlpUsing int) (strMessage StrMessage) {
+	strMessage.INodeToWords = make(map[uint64][]string)
+	strMessage.WordsVector = make(map[string][]float64)
 
-	defer strMapFile.Close()
-	defer treeFile.Close()
-	defer wordsFile.Close()
-	defer freqFile.Close()
-	defer vecFile.Close()
-
-	for k, v := range strMap {
-		tempTreeNode := iNodeMap[v]
-		strMapFile.WriteString(k + " " + strconv.FormatUint(v, 10) + "\n")
-		strNode := strconv.FormatUint(tempTreeNode.INode, 10)
-		if tempTreeNode.Parent != nil {
-			strNode += " " + strconv.FormatUint(tempTreeNode.Parent.INode, 10)
-		}
-		treeFile.WriteString(strNode + "\n")
-		if tempWords, ok := iNodeToWords[v]; ok {
-			wordsFile.WriteString(strconv.FormatUint(v, 10) + " " + strings.Join(tempWords, " ") + "\n")
-		}
+	var segmenter nlphelper.WordsSegment
+	var word2vector nlphelper.Word2Vector
+	switch nlpUsing {
+	case nlphelper.NlpUsingJieba:
+		segmenter = jieba.NewJieba()
+		word2vector = hanlp.NewHanLPConfig("")
+	case nlphelper.NlpUsingHanlp:
+		fallthrough
+	default:
+		hanlpConfig := hanlp.NewHanLPConfig("")
+		segmenter = hanlpConfig
+		word2vector = hanlpConfig
 	}
-	for k, v := range wordFreq {
-		freqFile.WriteString(k + " " + strconv.FormatFloat(v, 'f', -1, 64) + "\n")
-	}
-	for k, v := range wordVector {
-		vecFile.WriteString(k + " " + floatvector.VectorToString(v) + "\n")
-	}
-}
 
-func LoadTree(file_prefix string) (strMap map[string](uint64), iNodeMap map[uint64](*maptree.MapTreeNode), iNodeReverse map[uint64]string, iNodeToWords map[uint64]([]string), wordFreq map[string]float64, wordVector map[string][]float64) {
-	iNodeMap = make(map[uint64](*maptree.MapTreeNode))
-	strMap = make(map[string](uint64))
-	iNodeReverse = make(map[uint64]string)
-	iNodeToWords = make(map[uint64]([]string))
-	wordFreq = make(map[string]float64)
-	wordVector = make(map[string][]float64)
+	splitStrings := SplitStringIntoWords(csvDatas, segmenter)
+	strMessage.WordsWeight = EvaluateWordsWeight(splitStrings, WordsWeightEachRowOnce)
 
-	strMapFile, _ := os.Open(file_prefix + "str_map.pack")
-	defer strMapFile.Close()
-
-	strFileBuf := bufio.NewReader(strMapFile)
-
-	line, err := strFileBuf.ReadString('\n')
-
-	for true {
-		if len(line) > 0 {
-			line = line[:len(line)-1]
-			parts := strings.Split(line, " ")
-			if len(parts) == 2 {
-				iNode, _ := strconv.ParseUint(parts[1], 10, 64)
-				strMap[parts[0]] = iNode
-				iNodeReverse[iNode] = parts[0]
-			}
-		} else {
-			break
-		}
-		if err == bufio.ErrFinalToken {
-			break
-		} else {
-			line, err = strFileBuf.ReadString('\n')
+	for i := range csvDatas {
+		for j := range csvDatas[i] {
+			strMessage.INodeToWords[mapTree.StrToINode[csvDatas[i][j]]] = splitStrings[i][j]
 		}
 	}
 
-	treeFile, _ := os.Open(file_prefix + "tree.pack")
-	defer treeFile.Close()
-
-	treeFileBuf := bufio.NewReader(treeFile)
-	line, err = treeFileBuf.ReadString('\n')
-
-	for true {
-		if len(line) > 0 {
-			line = line[:len(line)-1]
-			parts := strings.Split(line, " ")
-			parentNode := (*maptree.MapTreeNode)(nil)
-			if len(parts) == 2 {
-				iNode, _ := strconv.ParseUint(parts[1], 10, 64)
-				if _, ok := iNodeMap[iNode]; ok {
-					parentNode = iNodeMap[iNode]
-				} else {
-					parentNode = maptree.NewMapTreeNode(iNode)
-					iNodeMap[iNode] = parentNode
-				}
-			}
-			iNode, _ := strconv.ParseUint(parts[0], 10, 64)
-			if _, ok := iNodeMap[iNode]; ok {
-				iNodeMap[iNode].Parent = parentNode
-			} else {
-				newNode := maptree.NewMapTreeNodeWithParent(iNode, parentNode)
-				iNodeMap[iNode] = newNode
-			}
-		} else {
-			break
-		}
-		if err == bufio.ErrFinalToken {
-			break
-		} else {
-			line, err = treeFileBuf.ReadString('\n')
-		}
-	}
-
-	wordsFile, _ := os.Open(file_prefix + "words.pack")
-	defer wordsFile.Close()
-
-	wordsScanner := bufio.NewScanner(wordsFile)
-	wordsScanner.Split(bufio.ScanLines)
-
-	for wordsScanner.Scan() {
-		line := wordsScanner.Text()
-		if len(line) > 0 {
-			words := strings.Split(line, " ")
-			iNode, _ := strconv.ParseUint(words[0], 10, 64)
-			iNodeToWords[iNode] = words[1:]
-		}
-	}
-
-	freqFile, _ := os.Open(file_prefix + "freq.pack")
-	defer freqFile.Close()
-
-	freqScanner := bufio.NewScanner(freqFile)
-	freqScanner.Split(bufio.ScanLines)
-
-	for freqScanner.Scan() {
-		line := freqScanner.Text()
-		if len(line) > 0 {
-			splits := strings.Split(line, " ")
-			freq, _ := strconv.ParseFloat(splits[1], 64)
-			wordFreq[splits[0]] = freq
-		}
-	}
-
-	vecFile, _ := os.Open(file_prefix + "vector.pack")
-	defer vecFile.Close()
-
-	vecScanner := bufio.NewScanner(vecFile)
-	vecScanner.Split(bufio.ScanLines)
-
-	for vecScanner.Scan() {
-		line := vecScanner.Text()
-		if len(line) > 0 {
-			splits := strings.Split(line, " ")
-			vector := make([]float64, len(splits)-1)
-			for i := 1; i < len(splits); i++ {
-				vector[i-1], _ = strconv.ParseFloat(splits[i], 64)
-			}
-			wordVector[splits[0]] = vector
-		}
+	for k, _ := range strMessage.WordsWeight {
+		strMessage.WordsVector[k] = word2vector.ToVector(k)
 	}
 
 	return

@@ -10,15 +10,16 @@ import (
 	"./searchtree"
 )
 
-func search() {
-	strMap, iNodeMap, iNodeReverse, _, _, _ := buildtree.LoadTree("company_")
-	indexStr := make([]string, len(strMap))
+func search(file string) {
+	filePrefix := "company_"
+	mapTree := buildtree.LoadTree(filePrefix)
+	indexStr := make([]string, len(mapTree.StrToINode))
 	index := 0
-	for k, _ := range strMap {
+	for k, _ := range mapTree.StrToINode {
 		indexStr[index] = k
 		index++
 	}
-	searchFile, _ := os.Open("search.txt")
+	searchFile, _ := os.Open(file)
 	defer searchFile.Close()
 
 	scanner := bufio.NewScanner(searchFile)
@@ -32,10 +33,10 @@ func search() {
 		topK := searchtree.TopKScores(scores, 20)
 		for i := range topK {
 			str := indexStr[topK[i]] + " " + strconv.FormatFloat(scores[topK[i]], 'f', -1, 64) + " "
-			iNode := strMap[indexStr[topK[i]]]
-			iTreeNode := iNodeMap[iNode]
+			iNode := mapTree.StrToINode[indexStr[topK[i]]]
+			iTreeNode := mapTree.INodeToTreeNode[iNode]
 			rootOf := iTreeNode.ToRoot()
-			str += iNodeReverse[rootOf.INode]
+			str += mapTree.INodeToStr[rootOf.INode]
 			fmt.Println(str)
 		}
 		fmt.Println()
