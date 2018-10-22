@@ -10,8 +10,7 @@ import (
 	"./searchtree"
 )
 
-func search(file string) {
-	filePrefix := "company_"
+func search(file, filePrefix string) {
 	mapTree := buildtree.LoadTree(filePrefix)
 	indexStr := make([]string, len(mapTree.StrToINode))
 	index := 0

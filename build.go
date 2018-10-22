@@ -7,11 +7,10 @@ import (
 	"./buildtree"
 )
 
-func build(csvFile string, nlpUsing int) {
+func build(csvFile string, filePrefix string, nlpUsing int) {
 	names := buildtree.ReadCsv(csvFile, true, true)
 	mapTree := buildtree.BuildMapTree(names)
 	strMessage := buildtree.EvaluateStrMessage(names, mapTree, nlpUsing)
-	filePrefix := "company_"
 	buildtree.DumpTree(mapTree, filePrefix)
 	buildtree.DumpMessage(strMessage, filePrefix)
 

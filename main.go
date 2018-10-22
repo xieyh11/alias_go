@@ -15,6 +15,5 @@ func main() {
 	// str := "好莱客创意"
 	// strSplit := hanlp.StrSegment(str)
 	// fmt.Println(strsim.SplitVectorDis(strSplit, baseSplit, wordFreq, wordVector))
-	// build("../all_companies.csv", nlphelper.NlpUsingHanlp)
-	searchSplit("search.txt", nlphelper.NlpUsingHanlp)
+	build("../address.csv", "address_jieba_", nlphelper.NlpUsingJieba)
 }

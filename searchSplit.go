@@ -14,8 +14,7 @@ import (
 	"./searchtree"
 )
 
-func searchSplit(file string, nlpUsing int) {
-	filePrefix := "company_"
+func searchSplit(file, filePrefix string, nlpUsing int) {
 	mapTree := buildtree.LoadTree(filePrefix)
 	strMessage := buildtree.LoadMessage(filePrefix)
 	indexStr := make([]string, len(mapTree.StrToINode))
