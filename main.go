@@ -1,8 +1,6 @@
 package main
 
-import (
-	"./strsim"
-)
+import "./nlphelper"
 
 func main() {
 	// strMap, _, _, iNodeToWords, wordFreq, wordVector := buildtree.LoadTree("company_")
@@ -11,6 +9,6 @@ func main() {
 	// str := "好莱客创意"
 	// strSplit := hanlp.StrSegment(str)
 	// fmt.Println(strsim.SplitVectorDis(strSplit, baseSplit, wordFreq, wordVector))
-	// build("../address.csv", "address_jieba_", nlphelper.NlpUsingJieba)
-	searchMap("searchMap.txt", "address_gaode_refactor_", strsim.MapSimiliarityLevelThree)
+	build("../address.csv", "address_gaode_", nlphelper.NlpUsingGaode)
+	// searchMap("searchMap.txt", "address_gaode_refactor_", strsim.MapSimiliarityLevelThree)
 }

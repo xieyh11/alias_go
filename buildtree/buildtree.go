@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/csv"
 	"fmt"
+	"log"
 	"os"
 	"strings"
 
@@ -197,9 +198,17 @@ func EvaluateStrMessage(csvDatas [][]string, mapTree MapTree, nlpUsing int) (str
 	splitStrings := SplitStringIntoWords(csvDatas, segmenter)
 	strMessage.WordsWeight = EvaluateWordsWeight(splitStrings, WordsWeightEachRowOnce)
 
+	logFile, _ := os.Create("log.pack")
+	defer logFile.Close()
+	log.SetOutput(logFile)
+
 	for i := range csvDatas {
 		for j := range csvDatas[i] {
-			strMessage.INodeToWords[mapTree.StrToINode[csvDatas[i][j]]] = splitStrings[i][j]
+			if len(splitStrings[i][j]) > 0 {
+				strMessage.INodeToWords[mapTree.StrToINode[csvDatas[i][j]]] = splitStrings[i][j]
+			} else {
+				log.Print(csvDatas[i][j])
+			}
 		}
 	}
 

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"strings"
 
 	"github.com/chromedp/chromedp"
 )
@@ -76,6 +77,18 @@ func (mapConfig *MapConfig) Segment(str string) []string {
 		err = json.Unmarshal([]byte(res), &mapRes)
 		if err != nil {
 			panic(fmt.Sprintln(err))
+		}
+		if len(mapRes.PName) == 0 {
+			if !strings.Contains(mapRes.Address, str) {
+				return mapConfig.Segment(mapRes.Address)
+			} else {
+				strRune := []rune(str)
+				if len(strRune) < 2 {
+					return []string{}
+				} else {
+					return mapConfig.Segment(string(strRune[:len(strRune)-1]))
+				}
+			}
 		}
 		return []string{mapRes.PName, mapRes.CityName, mapRes.AdName, mapRes.Address, mapRes.Name}
 	}

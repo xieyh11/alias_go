@@ -36,7 +36,7 @@ func searchMap(file, filePrefix string, level int) {
 	for scanner.Scan() {
 		line := scanner.Text()
 		name := segmentor.Segment(line)
-		scores := searchtree.SearchMap(indexStr, mapTree, strMessage, name, level, 1)
+		scores := searchtree.SearchMap(indexStr, mapTree, strMessage, name, level, 10)
 		topK := searchtree.TopKScores(scores, 20)
 		for i := range topK {
 			str := indexStr[topK[i]] + " " + strconv.FormatFloat(scores[topK[i]], 'f', -1, 64) + " "
