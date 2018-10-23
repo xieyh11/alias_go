@@ -11,4 +11,5 @@ type Word2Vector interface {
 const (
 	NlpUsingJieba = iota
 	NlpUsingHanlp
+	NlpUsingGaode
 )

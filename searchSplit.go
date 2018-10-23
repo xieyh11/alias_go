@@ -6,11 +6,11 @@ import (
 	"os"
 	"strconv"
 
+	"./buildtree"
 	"./nlphelper"
+	"./nlphelper/gaode"
 	"./nlphelper/hanlp"
 	"./nlphelper/jieba"
-
-	"./buildtree"
 	"./searchtree"
 )
 
@@ -39,6 +39,8 @@ func searchSplit(file, filePrefix string, nlpUsing int) {
 	switch nlpUsing {
 	case nlphelper.NlpUsingJieba:
 		segmentor = jieba.NewJieba()
+	case nlphelper.NlpUsingGaode:
+		segmentor = gaode.NewMapConfig("")
 	default:
 		segmentor = hanlpConfig
 	}

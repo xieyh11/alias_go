@@ -5,12 +5,13 @@ import (
 	"encoding/csv"
 	"fmt"
 	"os"
-
-	"../nlphelper"
-	"../nlphelper/hanlp"
-	"../nlphelper/jieba"
+	"strings"
 
 	"../maptree"
+	"../nlphelper"
+	"../nlphelper/gaode"
+	"../nlphelper/hanlp"
+	"../nlphelper/jieba"
 	"../stringhelper"
 )
 
@@ -33,6 +34,9 @@ func ReadCsv(filename string, hasIndex, hasColumnName bool) [][]string {
 	if hasIndex {
 		for i := range res {
 			res[i] = res[i][1:]
+			for j := range res[i] {
+				res[i][j] = strings.Replace(res[i][j], " ", "", -1)
+			}
 		}
 	}
 	return res
@@ -178,6 +182,9 @@ func EvaluateStrMessage(csvDatas [][]string, mapTree MapTree, nlpUsing int) (str
 	switch nlpUsing {
 	case nlphelper.NlpUsingJieba:
 		segmenter = jieba.NewJieba()
+		word2vector = hanlp.NewHanLPConfig("")
+	case nlphelper.NlpUsingGaode:
+		segmenter = gaode.NewMapConfig("")
 		word2vector = hanlp.NewHanLPConfig("")
 	case nlphelper.NlpUsingHanlp:
 		fallthrough

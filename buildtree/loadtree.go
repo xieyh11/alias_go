@@ -1,11 +1,12 @@
 package buildtree
 
 import (
-	"../maptree"
 	"bufio"
 	"os"
 	"strconv"
 	"strings"
+
+	"../maptree"
 )
 
 func LoadTree(filePrefix string) MapTree {

@@ -1,8 +1,6 @@
 package hanlp
 
 import (
-	"../../floatvector"
-	"../../stringhelper"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -12,6 +10,9 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"../../floatvector"
+	"../../stringhelper"
 )
 
 type HanLPConfig struct {
@@ -85,19 +86,32 @@ func (hanlp *HanLPConfig) ToVector(word string) []float64 {
 	body, _ := ioutil.ReadAll(response.Body)
 	if strings.Contains(string(body), "null") {
 		wordRune := []rune(word)
-		if len(wordRune) == 1 {
-			return make([]float64, hanlp.ResponseConfig.Word2VecDim)
-		}
-		vecRes := []float64{}
-		for i := range wordRune {
-			tempR := hanlp.ToVector(string(wordRune[i]))
-			if len(vecRes) == 0 {
-				vecRes = tempR
-			} else {
-				floatvector.AddVectorsInPlace(vecRes, tempR)
+		if segWords := hanlp.Segment(word); len(segWords) > 1 {
+			vecRes := []float64{}
+			for i := range segWords {
+				tempR := hanlp.ToVector(string(segWords[i]))
+				if len(vecRes) == 0 {
+					vecRes = tempR
+				} else {
+					floatvector.AddVectorsInPlace(vecRes, tempR)
+				}
 			}
+			return vecRes
+		} else {
+			if len(wordRune) == 1 {
+				return make([]float64, hanlp.ResponseConfig.Word2VecDim)
+			}
+			vecRes := []float64{}
+			for i := range wordRune {
+				tempR := hanlp.ToVector(string(wordRune[i]))
+				if len(vecRes) == 0 {
+					vecRes = tempR
+				} else {
+					floatvector.AddVectorsInPlace(vecRes, tempR)
+				}
+			}
+			return vecRes
 		}
-		return vecRes
 	} else {
 		return stringhelper.ParseFloatArray(string(body), true, hanlp.ResponseConfig.ArraySeg)
 	}

@@ -1,11 +1,7 @@
 package main
 
 import (
-	// "./buildtree"
-	// "./hanlp"
-	// "./strsim"
-	// "fmt"
-	"./nlphelper"
+	"./strsim"
 )
 
 func main() {
@@ -15,5 +11,6 @@ func main() {
 	// str := "好莱客创意"
 	// strSplit := hanlp.StrSegment(str)
 	// fmt.Println(strsim.SplitVectorDis(strSplit, baseSplit, wordFreq, wordVector))
-	build("../address.csv", "address_jieba_", nlphelper.NlpUsingJieba)
+	// build("../address.csv", "address_jieba_", nlphelper.NlpUsingJieba)
+	searchMap("searchMap.txt", "address_gaode_refactor_", strsim.MapSimiliarityLevelThree)
 }

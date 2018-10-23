@@ -1,0 +1,6 @@
+{
+    "url_config": {
+        "url_host": "http://180.8.50.64:8080/map_api/",
+        "map_keyword": "address"
+    }
+}
