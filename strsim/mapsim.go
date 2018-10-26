@@ -3,8 +3,6 @@ package strsim
 import (
 	"regexp"
 	"strings"
-
-	"../stringhelper"
 )
 
 const (
@@ -13,8 +11,8 @@ const (
 	MapSimiliarityLevelThree        // district level
 )
 
-var pathKeywords = []string{"片区", "大道", "路", "街", "道", "村"}
-var numKeywords = []string{"单元", "号楼", "弄", "号", "栋", "楼"}
+var pathKeywords = []string{"片区", "大道", "路", "街", "道", "村", "里"}
+var numKeywords = []string{"单元", "号楼", "弄", "号", "栋", "楼", "幢"}
 
 func isPath(rowStr string, idx, size int) bool {
 	fullPath := false
@@ -63,12 +61,12 @@ func removeAdDiv(rawStr, name string, suffix []string) string {
 				ni = strings.Index(rawStr, name)
 				if ni != -1 {
 					if !isPath(rawStr, ni, len(name)) {
-						strings.Replace(rawStr, name, "", 1)
+						rawStr = strings.Replace(rawStr, name, "", 1)
 					}
 				}
 			}
 		} else {
-			strings.Replace(rawStr, name, "", 1)
+			rawStr = strings.Replace(rawStr, name, "", 1)
 		}
 	}
 	return rawStr
@@ -82,6 +80,26 @@ func findPath(rowStr string) (int, int) {
 		}
 	}
 	return -1, 0
+}
+
+func removeStrByIndex(s string, start, end int) string {
+	if start < 0 {
+		start = 0
+	}
+	if end > len(s) {
+		end = len(s)
+	}
+	return s[:start] + s[end:]
+}
+
+func getSubString(s string, start, end int) string {
+	if start < 0 {
+		start = 0
+	}
+	if end > len(s) {
+		end = len(s)
+	}
+	return s[start:end]
 }
 
 func MapExtractInfo(rawStr string, search []string) []string {
@@ -107,41 +125,49 @@ func MapExtractInfo(rawStr string, search []string) []string {
 			res[len(res)-1] += rawStr[:pathI+pathL]
 			rawStr = rawStr[pathI+pathL:]
 		}
+	} else {
+		res = append(res, "")
 	}
 
 	numReg, _ := regexp.Compile(`[a-zA-Z]{0,1}\d+`)
-	numIdxs := numReg.FindAllIndex([]byte(rawStr), -1)
+	numIdxs := numReg.FindIndex([]byte(rawStr))
 	if numIdxs != nil {
-		res = append(res, rawStr[numIdxs[0][0]:numIdxs[0][1]])
-	} else {
-		res = append(res, "")
-	}
-	if len(numIdxs) > 1 {
-		numStrs := make([]string, 0)
-		for i := 1; i < len(numIdxs); i++ {
-			numStrs = append(numStrs, rawStr[numIdxs[i][0]:numIdxs[i][1]])
-		}
-		res = append(res, strings.Join(numStrs, "-"))
-	} else {
-		res = append(res, "")
-	}
-
-	for _, idx := range numIdxs {
-		if idx[1] < len(rawStr) {
-			for _, k := range numKeywords {
-				endIdx := idx[1] + len(k)
-				if endIdx > len(rawStr) {
-					endIdx = len(rawStr)
-				}
-				if rawStr[idx[1]:endIdx] == k {
-					rawStr = rawStr[:idx[0]] + rawStr[endIdx:]
-					break
-				}
+		res = append(res, rawStr[numIdxs[0]:numIdxs[1]])
+		hasKey := false
+		for _, k := range numKeywords {
+			endIdx := numIdxs[1] + len(k)
+			if getSubString(rawStr, numIdxs[1], endIdx) == k {
+				rawStr = removeStrByIndex(rawStr, numIdxs[0], endIdx)
+				hasKey = true
+				break
 			}
 		}
+		if !hasKey {
+			rawStr = removeStrByIndex(rawStr, numIdxs[0], numIdxs[1])
+		}
+	} else {
+		res = append(res, "")
 	}
+	numIdxs = numReg.FindIndex([]byte(rawStr))
+	numStrs := make([]string, 0)
+	for numIdxs != nil {
+		numStrs = append(numStrs, rawStr[numIdxs[0]:numIdxs[1]])
+		hasKey := false
+		for _, k := range numKeywords {
+			endIdx := numIdxs[1] + len(k)
+			if getSubString(rawStr, numIdxs[1], endIdx) == k {
+				rawStr = removeStrByIndex(rawStr, numIdxs[0], endIdx)
+				hasKey = true
+				break
+			}
+		}
+		if !hasKey {
+			rawStr = removeStrByIndex(rawStr, numIdxs[0], numIdxs[1])
+		}
+		numIdxs = numReg.FindIndex([]byte(rawStr))
+	}
+	res = append(res, strings.Join(numStrs, "-"))
 
-	rawStr = stringhelper.RemovePunc(rawStr)
 	res = append(res, rawStr)
 
 	return res
