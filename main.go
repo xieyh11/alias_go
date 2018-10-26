@@ -1,14 +1,16 @@
 package main
 
-import "./nlphelper"
+import "./strsim"
 
 func main() {
-	// strMap, _, _, iNodeToWords, wordFreq, wordVector := buildtree.LoadTree("company_")
-	// base := "北京弘高创意建筑设计股份有限公司"
-	// baseSplit := iNodeToWords[strMap[base]]
-	// str := "好莱客创意"
-	// strSplit := hanlp.StrSegment(str)
-	// fmt.Println(strsim.SplitVectorDis(strSplit, baseSplit, wordFreq, wordVector))
-	build("../address.csv", "address_gaode_", nlphelper.NlpUsingGaode)
-	// searchMap("searchMap.txt", "address_gaode_refactor_", strsim.MapSimiliarityLevelThree)
+	// filePrefix := "address_gaode_"
+	// mapTree := buildtree.LoadTree(filePrefix)
+	// strMessage := buildtree.LoadMessage(filePrefix)
+	// address := "武汉市武昌区友谊大道特1号广达大厦写字楼"
+	// compare := "香港皇后大道东183号合和中心64楼"
+	// mapConfig := gaode.NewMapConfig("")
+	// words := mapConfig.Segment(address)
+	// fmt.Println(strsim.MapSegmentSimiliarity(strMessage.INodeToWords[mapTree.StrToINode[compare]], words, strsim.MapSimiliarityLevelThree))
+	// update("../address.csv", "address_gaode_", nlphelper.NlpUsingGaode)
+	searchMap("searchMap.txt", "address_gaode_", strsim.MapSimiliarityLevelThree)
 }

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/url"
 	"os"
-	"strings"
 
 	"github.com/chromedp/chromedp"
 )
@@ -40,6 +39,11 @@ func NewMapConfig(config string) *MapConfig {
 	if err != nil {
 		panic(fmt.Sprintln(err))
 	}
+	err = res.chromeIns.Run(res.chromeCtx, chromedp.Tasks{
+		chromedp.Navigate(res.UrlConfig.Host + "?" + res.UrlConfig.MapKey + "=%E5%8C%97%E4%BA%AC%E5%AF%8C%E5%87%AF%E5%A4%A7%E5%8E%A6"),
+		chromedp.WaitVisible(`#address`, chromedp.ByID),
+		chromedp.Reload(),
+	})
 	return res
 }
 
@@ -79,15 +83,11 @@ func (mapConfig *MapConfig) Segment(str string) []string {
 			panic(fmt.Sprintln(err))
 		}
 		if len(mapRes.PName) == 0 {
-			if !strings.Contains(mapRes.Address, str) {
-				return mapConfig.Segment(mapRes.Address)
+			strRune := []rune(str)
+			if len(strRune) < 2 {
+				return []string{}
 			} else {
-				strRune := []rune(str)
-				if len(strRune) < 2 {
-					return []string{}
-				} else {
-					return mapConfig.Segment(string(strRune[:len(strRune)-1]))
-				}
+				return mapConfig.Segment(string(strRune[:len(strRune)-1]))
 			}
 		}
 		return []string{mapRes.PName, mapRes.CityName, mapRes.AdName, mapRes.Address, mapRes.Name}

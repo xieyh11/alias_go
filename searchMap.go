@@ -10,6 +10,7 @@ import (
 	"./nlphelper"
 	"./nlphelper/gaode"
 	"./searchtree"
+	"./strsim"
 )
 
 func searchMap(file, filePrefix string, level int) {
@@ -36,6 +37,7 @@ func searchMap(file, filePrefix string, level int) {
 	for scanner.Scan() {
 		line := scanner.Text()
 		name := segmentor.Segment(line)
+		name = strsim.MapExtractInfo(line, name)
 		scores := searchtree.SearchMap(indexStr, mapTree, strMessage, name, level, 10)
 		topK := searchtree.TopKScores(scores, 20)
 		for i := range topK {

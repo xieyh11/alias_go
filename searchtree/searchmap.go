@@ -7,7 +7,8 @@ import (
 
 func subSearchMap(names []string, mapTree buildtree.MapTree, strMessage buildtree.StrMessage, name []string, scores []float64, level int, count chan int) {
 	for strI := range names {
-		scores[strI] = strsim.MapSegmentSimiliarity(strMessage.INodeToWords[mapTree.StrToINode[names[strI]]], name, level)
+		map1 := strsim.MapExtractInfo(names[strI], strMessage.INodeToWords[mapTree.StrToINode[names[strI]]])
+		scores[strI] = strsim.MapSegmentSimiliarity(map1, name, level)
 	}
 	count <- 1
 }
