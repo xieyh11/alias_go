@@ -151,7 +151,12 @@ func MapExtractInfo(rawStr string, search []string) []string {
 			rawStr = removeStrByIndex(rawStr, numIdxs[0], numIdxs[1])
 		}
 	} else {
-		res = append(res, "")
+		numIdxs := numReg.FindIndex([]byte(search[3]))
+		if numIdxs != nil {
+			res = append(res, search[3][numIdxs[0]:numIdxs[1]])
+		} else {
+			res = append(res, "")
+		}
 	}
 	numIdxs = numReg.FindIndex([]byte(rawStr))
 	numStrs := make([]string, 0)
