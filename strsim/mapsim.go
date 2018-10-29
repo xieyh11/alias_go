@@ -126,7 +126,12 @@ func MapExtractInfo(rawStr string, search []string) []string {
 			rawStr = rawStr[pathI+pathL:]
 		}
 	} else {
-		res = append(res, "")
+		pathI, pathL := findPath(search[3])
+		if pathI != -1 {
+			res = append(res, search[3][:pathI+pathL])
+		} else {
+			res = append(res, "")
+		}
 	}
 
 	numReg, _ := regexp.Compile(`[a-zA-Z]{0,1}\d+`)
