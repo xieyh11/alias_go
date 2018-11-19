@@ -185,6 +185,50 @@ func MapExtractInfo(rawStr string, search []string) []string {
 
 var mapWeights = []float64{0.8, 0.1, 0.5, 0.5}
 
+func tripleMax(a, b, c int) int {
+	res := a
+	if res < b {
+		res = b
+	}
+	if res < c {
+		res = c
+	}
+	return res
+}
+
+func MaxSubSeq(seq1, seq2 []string) int {
+	rows, cols := len(seq1), len(seq2)
+	if rows == 0 || cols == 0 {
+		return 0
+	}
+	res := make([][]int, rows+1)
+	for i := range res {
+		res[i] = make([]int, cols+1)
+	}
+	for i, j := rows-1, cols-1; i >= 0 && j >= 0; i, j = i-1, j-1 {
+		ij := 0
+		if seq1[i] == seq2[j] {
+			ij = 1
+		}
+		res[i][j] = tripleMax(ij+res[i+1][j+1], res[i][j+1], res[i+1][j])
+		for c := j - 1; c >= 0; c-- {
+			ic := 0
+			if seq1[i] == seq2[c] {
+				ic = 1
+			}
+			res[i][c] = tripleMax(ic+res[i+1][c+1], res[i][c+1], res[i+1][c])
+		}
+		for r := i - 1; r >= 0; r-- {
+			rj := 0
+			if seq1[r] == seq2[j] {
+				rj = 1
+			}
+			res[r][j] = tripleMax(rj+res[r+1][j+1], res[r][j+1], res[r+1][j])
+		}
+	}
+	return res[0][0]
+}
+
 func MapSegmentSimiliarity(map1, map2 []string, level int) float64 {
 	if len(map1) != len(map2) {
 		return 0
@@ -192,7 +236,10 @@ func MapSegmentSimiliarity(map1, map2 []string, level int) float64 {
 	segL := len(map1)
 	segRes := make([]float64, segL)
 	for i := range segRes {
-		if i < 3 {
+		switch {
+		case i < 3:
+			fallthrough
+		case i == 4:
 			if len(map1[i]) == 0 || len(map2[i]) == 0 {
 				segRes[i] = 1
 			} else {
@@ -202,7 +249,18 @@ func MapSegmentSimiliarity(map1, map2 []string, level int) float64 {
 					segRes[i] = 0
 				}
 			}
-		} else {
+		case i == 3:
+			segRes[i] = RunesMaxCommonScore([]rune(map1[i]), []rune(map2[i]), 0, 1, 0)
+		case i == 5:
+			if len(map1[i]) == 0 || len(map2[i]) == 0 {
+				segRes[i] = 1
+			} else {
+				nums1 := strings.Split(map1[i], "-")
+				nums2 := strings.Split(map2[i], "-")
+				maxL := MaxSubSeq(nums1, nums2)
+				segRes[i] = float64(maxL) / float64(len(nums1)+len(nums2)-maxL)
+			}
+		default:
 			segRes[i] = RunesMaxCommonScore([]rune(map1[i]), []rune(map2[i]), 0, 1, 0)
 		}
 	}
